@@ -15,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.ecom.model.UserDtls;
 
-@FeignClient(name = "SHOPPING-MICROSERVICE", url = "http://${microservice1:localhost}:8091")
+@FeignClient(name = "SHOPPING-MICROSERVICE", url = "http://3.143.209.148:8091")
 public interface UserClient {
 
     @PostMapping("/api/users")

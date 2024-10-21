@@ -7,7 +7,7 @@ import com.ecom.model.Cart;
 
 import java.util.List;
 
-@FeignClient(name = "SHOPPING-MICROSERVICE2", url = "http://${microservice3:localhost}:8092")
+@FeignClient(name = "SHOPPING-MICROSERVICE2", url = "http://3.141.22.8:8092")
 public interface CartClient {
 
     @PostMapping("/api/carts/save")
