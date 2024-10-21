@@ -27,13 +27,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ecom.client.CartClient;
+import com.ecom.client.ProductClient;
+import com.ecom.client.UserClient;
 import com.ecom.model.Category;
 import com.ecom.model.Product;
 import com.ecom.model.UserDtls;
-import com.ecom.service.CartService;
 import com.ecom.service.CategoryService;
-import com.ecom.service.ProductService;
-import com.ecom.service.UserService;
 import com.ecom.util.CommonUtil;
 
 import io.micrometer.common.util.StringUtils;
@@ -48,10 +48,10 @@ public class HomeController {
 	private CategoryService categoryService;
 
 	@Autowired
-	private ProductService productService;
-
+	private ProductClient productClient;
+	
 	@Autowired
-	private UserService userService;
+	private UserClient userClient;
 
 	@Autowired
 	private CommonUtil commonUtil;
@@ -60,15 +60,15 @@ public class HomeController {
 	private BCryptPasswordEncoder passwordEncoder;
 
 	@Autowired
-	private CartService cartService;
+	private CartClient cartClient;
 
 	@ModelAttribute
 	public void getUserDetails(Principal p, Model m) {
 		if (p != null) {
 			String email = p.getName();
-			UserDtls userDtls = userService.getUserByEmail(email);
+			UserDtls userDtls = userClient.getUserByEmail(email);
 			m.addAttribute("user", userDtls);
-			Integer countCart = cartService.getCountCart(userDtls.getId());
+			Integer countCart = cartClient.getCountCart(userDtls.getId());
 			m.addAttribute("countCart", countCart);
 		}
 
@@ -83,7 +83,7 @@ public class HomeController {
 
 		List<Category> allActiveCategory = categoryService.getAllActiveCategory().stream()
 				.sorted((c1, c2) -> c2.getId().compareTo(c1.getId())).limit(6).toList();
-		List<Product> allActiveProducts = productService.getAllActiveProducts("").stream()
+		List<Product> allActiveProducts = productClient.getAllActiveProducts("").stream()
 				.sorted((p1, p2) -> p2.getId().compareTo(p1.getId())).limit(8).toList();
 		m.addAttribute("category", allActiveCategory);
 		m.addAttribute("products", allActiveProducts);
@@ -110,13 +110,13 @@ public class HomeController {
 		m.addAttribute("paramValue", category);
 		m.addAttribute("categories", categories);
 
-//		List<Product> products = productService.getAllActiveProducts(category);
+//		List<Product> products = productClient.getAllActiveProducts(category);
 //		m.addAttribute("products", products);
 		Page<Product> page = null;
 		if (StringUtils.isEmpty(ch)) {
-			page = productService.getAllActiveProductPagination(pageNo, pageSize, category);
+			page = productClient.getAllActiveProductsPagination(pageNo, pageSize, category);
 		} else {
-			page = productService.searchActiveProductPagination(pageNo, pageSize, category, ch);
+			page = productClient.searchActiveProductPagination(pageNo, pageSize, category, ch);
 		}
 
 		List<Product> products = page.getContent();
@@ -135,7 +135,7 @@ public class HomeController {
 
 	@GetMapping("/product/{id}")
 	public String product(@PathVariable int id, Model m) {
-		Product productById = productService.getProductById(id);
+		Product productById = productClient.getProductById(id);
 		m.addAttribute("product", productById);
 		return "view_product";
 	}
@@ -144,14 +144,14 @@ public class HomeController {
 	public String saveUser(@ModelAttribute UserDtls user, @RequestParam("img") MultipartFile file, HttpSession session)
 			throws IOException {
 
-		Boolean existsEmail = userService.existsEmail(user.getEmail());
+		Boolean existsEmail = userClient.existsEmail(user.getEmail());
 
 		if (existsEmail) {
 			session.setAttribute("errorMsg", "Email already exist");
 		} else {
 			String imageName = file.isEmpty() ? "default.jpg" : file.getOriginalFilename();
 			user.setProfileImage(imageName);
-			UserDtls saveUser = userService.saveUser(user);
+			UserDtls saveUser = userClient.createUser(user);
 
 			if (!ObjectUtils.isEmpty(saveUser)) {
 				if (!file.isEmpty()) {
@@ -183,14 +183,14 @@ public class HomeController {
 	public String processForgotPassword(@RequestParam String email, HttpSession session, HttpServletRequest request)
 			throws UnsupportedEncodingException, MessagingException {
 
-		UserDtls userByEmail = userService.getUserByEmail(email);
+		UserDtls userByEmail = userClient.getUserByEmail(email);
 
 		if (ObjectUtils.isEmpty(userByEmail)) {
 			session.setAttribute("errorMsg", "Invalid email");
 		} else {
 
 			String resetToken = UUID.randomUUID().toString();
-			userService.updateUserResetToken(email, resetToken);
+			userClient.updateUserResetToken(email, resetToken);
 
 			// Generate URL :
 			// http://localhost:8080/reset-password?token=sfgdbgfswegfbdgfewgvsrg
@@ -212,7 +212,7 @@ public class HomeController {
 	@GetMapping("/reset-password")
 	public String showResetPassword(@RequestParam String token, HttpSession session, Model m) {
 
-		UserDtls userByToken = userService.getUserByToken(token);
+		UserDtls userByToken = userClient.getUserByToken(token);
 
 		if (userByToken == null) {
 			m.addAttribute("msg", "Your link is invalid or expired !!");
@@ -226,14 +226,14 @@ public class HomeController {
 	public String resetPassword(@RequestParam String token, @RequestParam String password, HttpSession session,
 			Model m) {
 
-		UserDtls userByToken = userService.getUserByToken(token);
+		UserDtls userByToken = userClient.getUserByToken(token);
 		if (userByToken == null) {
 			m.addAttribute("errorMsg", "Your link is invalid or expired !!");
 			return "message";
 		} else {
 			userByToken.setPassword(passwordEncoder.encode(password));
 			userByToken.setResetToken(null);
-			userService.updateUser(userByToken);
+			userClient.updateUser(userByToken);
 			// session.setAttribute("succMsg", "Password change successfully");
 			m.addAttribute("msg", "Password change successfully");
 
@@ -244,7 +244,7 @@ public class HomeController {
 
 	@GetMapping("/search")
 	public String searchProduct(@RequestParam String ch, Model m) {
-		List<Product> searchProducts = productService.searchProduct(ch);
+		List<Product> searchProducts = productClient.searchProduct(ch);
 		m.addAttribute("products", searchProducts);
 		List<Category> categories = categoryService.getAllActiveCategory();
 		m.addAttribute("categories", categories);

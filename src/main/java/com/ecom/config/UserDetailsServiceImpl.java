@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import com.ecom.client.UserClient;
 import com.ecom.model.UserDtls;
-import com.ecom.repository.UserRepository;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {

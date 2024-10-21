@@ -12,11 +12,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.ecom.client.CartClient;
 import com.ecom.model.Cart;
 import com.ecom.model.OrderAddress;
 import com.ecom.model.OrderRequest;
 import com.ecom.model.ProductOrder;
-import com.ecom.repository.CartRepository;
 import com.ecom.repository.ProductOrderRepository;
 import com.ecom.service.OrderService;
 import com.ecom.util.CommonUtil;
@@ -29,7 +29,7 @@ public class OrderServiceImpl implements OrderService {
 	private ProductOrderRepository orderRepository;
 
 	@Autowired
-	private CartRepository cartRepository;
+	private CartClient cartClient;
 
 	@Autowired
 	private CommonUtil commonUtil;
@@ -37,7 +37,7 @@ public class OrderServiceImpl implements OrderService {
 	@Override
 	public void saveOrder(Integer userid, OrderRequest orderRequest) throws Exception {
 
-		List<Cart> carts = cartRepository.findByUserId(userid);
+		List<Cart> carts = cartClient.getCartsByUser(userid);
 
 		for (Cart cart : carts) {
 

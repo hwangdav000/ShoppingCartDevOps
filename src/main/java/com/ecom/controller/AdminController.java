@@ -24,15 +24,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ecom.client.CartClient;
+import com.ecom.client.ProductClient;
+import com.ecom.client.UserClient;
 import com.ecom.model.Category;
 import com.ecom.model.Product;
 import com.ecom.model.ProductOrder;
 import com.ecom.model.UserDtls;
-import com.ecom.service.CartService;
+
 import com.ecom.service.CategoryService;
 import com.ecom.service.OrderService;
-import com.ecom.service.ProductService;
-import com.ecom.service.UserService;
+
 import com.ecom.util.CommonUtil;
 import com.ecom.util.OrderStatus;
 
@@ -46,13 +48,13 @@ public class AdminController {
 	private CategoryService categoryService;
 
 	@Autowired
-	private ProductService productService;
+	private ProductClient productClient;
+	
+	@Autowired
+	private UserClient userClient;
 
 	@Autowired
-	private UserService userService;
-
-	@Autowired
-	private CartService cartService;
+	private CartClient cartClient;
 
 	@Autowired
 	private OrderService orderService;
@@ -67,9 +69,9 @@ public class AdminController {
 	public void getUserDetails(Principal p, Model m) {
 		if (p != null) {
 			String email = p.getName();
-			UserDtls userDtls = userService.getUserByEmail(email);
+			UserDtls userDtls = userClient.getUserByEmail(email);
 			m.addAttribute("user", userDtls);
-			Integer countCart = cartService.getCountCart(userDtls.getId());
+			Integer countCart = cartClient.getCountCart(userDtls.getId());
 			m.addAttribute("countCart", countCart);
 		}
 
@@ -212,7 +214,7 @@ public class AdminController {
 		product.setImage(imageName);
 		product.setDiscount(0);
 		product.setDiscountPrice(product.getPrice());
-		Product saveProduct = productService.saveProduct(product);
+		Product saveProduct = productClient.saveProduct(product);
 
 		if (!ObjectUtils.isEmpty(saveProduct)) {
 
@@ -239,17 +241,17 @@ public class AdminController {
 
 //		List<Product> products = null;
 //		if (ch != null && ch.length() > 0) {
-//			products = productService.searchProduct(ch);
+//			products = productClient.searchProduct(ch);
 //		} else {
-//			products = productService.getAllProducts();
+//			products = productClient.getAllProducts();
 //		}
 //		m.addAttribute("products", products);
 
 		Page<Product> page = null;
 		if (ch != null && ch.length() > 0) {
-			page = productService.searchProductPagination(pageNo, pageSize, ch);
+			page = productClient.searchProductPagination(pageNo, pageSize, ch);
 		} else {
-			page = productService.getAllProductsPagination(pageNo, pageSize);
+			page = productClient.getAllProductsPagination(pageNo, pageSize);
 		}
 		m.addAttribute("products", page.getContent());
 
@@ -265,7 +267,7 @@ public class AdminController {
 
 	@GetMapping("/deleteProduct/{id}")
 	public String deleteProduct(@PathVariable int id, HttpSession session) {
-		Boolean deleteProduct = productService.deleteProduct(id);
+		Boolean deleteProduct = productClient.deleteProduct(id);
 		if (deleteProduct) {
 			session.setAttribute("succMsg", "Product delete success");
 		} else {
@@ -276,7 +278,7 @@ public class AdminController {
 
 	@GetMapping("/editProduct/{id}")
 	public String editProduct(@PathVariable int id, Model m) {
-		m.addAttribute("product", productService.getProductById(id));
+		m.addAttribute("product", productClient.getProductById(id));
 		m.addAttribute("categories", categoryService.getAllCategory());
 		return "admin/edit_product";
 	}
@@ -288,7 +290,7 @@ public class AdminController {
 		if (product.getDiscount() < 0 || product.getDiscount() > 100) {
 			session.setAttribute("errorMsg", "invalid Discount");
 		} else {
-			Product updateProduct = productService.updateProduct(product, image);
+			Product updateProduct = productClient.updateProduct(product, image);
 			if (!ObjectUtils.isEmpty(updateProduct)) {
 				session.setAttribute("succMsg", "Product update success");
 			} else {
@@ -302,9 +304,9 @@ public class AdminController {
 	public String getAllUsers(Model m, @RequestParam Integer type) {
 		List<UserDtls> users = null;
 		if (type == 1) {
-			users = userService.getUsers("ROLE_USER");
+			users = userClient.getUsersByRole("ROLE_USER");
 		} else {
-			users = userService.getUsers("ROLE_ADMIN");
+			users = userClient.getUsersByRole("ROLE_ADMIN");
 		}
 		m.addAttribute("userType",type);
 		m.addAttribute("users", users);
@@ -313,7 +315,7 @@ public class AdminController {
 
 	@GetMapping("/updateSts")
 	public String updateUserAccountStatus(@RequestParam Boolean status, @RequestParam Integer id,@RequestParam Integer type, HttpSession session) {
-		Boolean f = userService.updateAccountStatus(id, status);
+		Boolean f = userClient.updateAccountStatus(id, status);
 		if (f) {
 			session.setAttribute("succMsg", "Account Status Updated");
 		} else {
@@ -420,7 +422,7 @@ public class AdminController {
 
 		String imageName = file.isEmpty() ? "default.jpg" : file.getOriginalFilename();
 		user.setProfileImage(imageName);
-		UserDtls saveUser = userService.saveAdmin(user);
+		UserDtls saveUser = userClient.saveAdmin(user);
 
 		if (!ObjectUtils.isEmpty(saveUser)) {
 			if (!file.isEmpty()) {
@@ -447,7 +449,7 @@ public class AdminController {
 
 	@PostMapping("/update-profile")
 	public String updateProfile(@ModelAttribute UserDtls user, @RequestParam MultipartFile img, HttpSession session) {
-		UserDtls updateUserProfile = userService.updateUserProfile(user, img);
+		UserDtls updateUserProfile = userClient.updateUserProfile(img, user);
 		if (ObjectUtils.isEmpty(updateUserProfile)) {
 			session.setAttribute("errorMsg", "Profile not updated");
 		} else {
@@ -466,7 +468,7 @@ public class AdminController {
 		if (matches) {
 			String encodePassword = passwordEncoder.encode(newPassword);
 			loggedInUserDetails.setPassword(encodePassword);
-			UserDtls updateUser = userService.updateUser(loggedInUserDetails);
+			UserDtls updateUser = userClient.updateUser(loggedInUserDetails);
 			if (ObjectUtils.isEmpty(updateUser)) {
 				session.setAttribute("errorMsg", "Password not updated !! Error in server");
 			} else {

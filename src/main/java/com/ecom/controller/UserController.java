@@ -15,16 +15,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ecom.client.CartClient;
+import com.ecom.client.UserClient;
 import com.ecom.model.Cart;
 import com.ecom.model.Category;
 import com.ecom.model.OrderRequest;
 import com.ecom.model.ProductOrder;
 import com.ecom.model.UserDtls;
-import com.ecom.repository.UserRepository;
-import com.ecom.service.CartService;
+
 import com.ecom.service.CategoryService;
 import com.ecom.service.OrderService;
-import com.ecom.service.UserService;
 import com.ecom.util.CommonUtil;
 import com.ecom.util.OrderStatus;
 
@@ -33,13 +33,15 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 @RequestMapping("/user")
 public class UserController {
+	
 	@Autowired
-	private UserService userService;
+	private UserClient userClient;
+	
 	@Autowired
 	private CategoryService categoryService;
 
 	@Autowired
-	private CartService cartService;
+	private CartClient cartClient;
 
 	@Autowired
 	private OrderService orderService;
@@ -60,9 +62,9 @@ public class UserController {
 	public void getUserDetails(Principal p, Model m) {
 		if (p != null) {
 			String email = p.getName();
-			UserDtls userDtls = userService.getUserByEmail(email);
+			UserDtls userDtls = userClient.getUserByEmail(email);
 			m.addAttribute("user", userDtls);
-			Integer countCart = cartService.getCountCart(userDtls.getId());
+			Integer countCart = cartClient.getCountCart(userDtls.getId());
 			m.addAttribute("countCart", countCart);
 		}
 
@@ -72,7 +74,7 @@ public class UserController {
 
 	@GetMapping("/addCart")
 	public String addToCart(@RequestParam Integer pid, @RequestParam Integer uid, HttpSession session) {
-		Cart saveCart = cartService.saveCart(pid, uid);
+		Cart saveCart = cartClient.saveCart(pid, uid);
 
 		if (ObjectUtils.isEmpty(saveCart)) {
 			session.setAttribute("errorMsg", "Product add to cart failed");
@@ -86,7 +88,7 @@ public class UserController {
 	public String loadCartPage(Principal p, Model m) {
 
 		UserDtls user = getLoggedInUserDetails(p);
-		List<Cart> carts = cartService.getCartsByUser(user.getId());
+		List<Cart> carts = cartClient.getCartsByUser(user.getId());
 		m.addAttribute("carts", carts);
 		if (carts.size() > 0) {
 			Double totalOrderPrice = carts.get(carts.size() - 1).getTotalOrderPrice();
@@ -97,20 +99,20 @@ public class UserController {
 
 	@GetMapping("/cartQuantityUpdate")
 	public String updateCartQuantity(@RequestParam String sy, @RequestParam Integer cid) {
-		cartService.updateQuantity(sy, cid);
+		cartClient.updateQuantity(sy, cid);
 		return "redirect:/user/cart";
 	}
 
 	private UserDtls getLoggedInUserDetails(Principal p) {
 		String email = p.getName();
-		UserDtls userDtls = userService.getUserByEmail(email);
+		UserDtls userDtls = userClient.getUserByEmail(email);
 		return userDtls;
 	}
 
 	@GetMapping("/orders")
 	public String orderPage(Principal p, Model m) {
 		UserDtls user = getLoggedInUserDetails(p);
-		List<Cart> carts = cartService.getCartsByUser(user.getId());
+		List<Cart> carts = cartClient.getCartsByUser(user.getId());
 		m.addAttribute("carts", carts);
 		if (carts.size() > 0) {
 			Double orderPrice = carts.get(carts.size() - 1).getTotalOrderPrice();
@@ -178,7 +180,7 @@ public class UserController {
 
 	@PostMapping("/update-profile")
 	public String updateProfile(@ModelAttribute UserDtls user, @RequestParam MultipartFile img, HttpSession session) {
-		UserDtls updateUserProfile = userService.updateUserProfile(user, img);
+		UserDtls updateUserProfile = userClient.updateUserProfile(img, user);
 		if (ObjectUtils.isEmpty(updateUserProfile)) {
 			session.setAttribute("errorMsg", "Profile not updated");
 		} else {
@@ -197,7 +199,7 @@ public class UserController {
 		if (matches) {
 			String encodePassword = passwordEncoder.encode(newPassword);
 			loggedInUserDetails.setPassword(encodePassword);
-			UserDtls updateUser = userService.updateUser(loggedInUserDetails);
+			UserDtls updateUser = userClient.updateUser(loggedInUserDetails);
 			if (ObjectUtils.isEmpty(updateUser)) {
 				session.setAttribute("errorMsg", "Password not updated !! Error in server");
 			} else {

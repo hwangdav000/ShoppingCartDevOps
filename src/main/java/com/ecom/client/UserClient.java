@@ -8,13 +8,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecom.model.UserDtls;
 
-@FeignClient(name = "SHOPPING-MICROSERVICE", url = "http://${microservice1:localhost}:8091") 
+@FeignClient(name = "SHOPPING-MICROSERVICE", url = "http://${microservice1:localhost}:8091")
 public interface UserClient {
 
     @PostMapping("/api/users")
@@ -22,6 +23,9 @@ public interface UserClient {
 
     @GetMapping("/api/users/email/{email}")
     UserDtls getUserByEmail(@PathVariable("email") String email);
+    
+    @GetMapping("/api/users/{id}")
+    UserDtls getUserById(@PathVariable("id") Integer id);
 
     @GetMapping("/api/users/role/{role}")
     List<UserDtls> getUsersByRole(@PathVariable("role") String role);

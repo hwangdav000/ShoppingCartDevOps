@@ -29,7 +29,7 @@ public class AuthSucessHandlerImpl implements AuthenticationSuccessHandler {
 		{
 			response.sendRedirect("/admin/");
 		}else {
-			response.sendRedirect("/");
+			response.sendRedirect("/home");
 		}
 		
 	}
