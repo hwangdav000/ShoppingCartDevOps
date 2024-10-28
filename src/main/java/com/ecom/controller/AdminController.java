@@ -25,15 +25,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecom.client.CartClient;
+import com.ecom.client.CategoryClient;
+import com.ecom.client.OrderClient;
 import com.ecom.client.ProductClient;
 import com.ecom.client.UserClient;
 import com.ecom.model.Category;
 import com.ecom.model.Product;
 import com.ecom.model.ProductOrder;
 import com.ecom.model.UserDtls;
-
-import com.ecom.service.CategoryService;
-import com.ecom.service.OrderService;
 
 import com.ecom.util.CommonUtil;
 import com.ecom.util.OrderStatus;
@@ -45,7 +44,7 @@ import jakarta.servlet.http.HttpSession;
 public class AdminController {
 
 	@Autowired
-	private CategoryService categoryService;
+	private CategoryClient categoryClient;
 
 	@Autowired
 	private ProductClient productClient;
@@ -57,7 +56,7 @@ public class AdminController {
 	private CartClient cartClient;
 
 	@Autowired
-	private OrderService orderService;
+	private OrderClient orderClient;
 
 	@Autowired
 	private CommonUtil commonUtil;
@@ -75,7 +74,7 @@ public class AdminController {
 			m.addAttribute("countCart", countCart);
 		}
 
-		List<Category> allActiveCategory = categoryService.getAllActiveCategory();
+		List<Category> allActiveCategory = categoryClient.getAllActiveCategory();
 		m.addAttribute("categorys", allActiveCategory);
 	}
 
@@ -86,7 +85,7 @@ public class AdminController {
 
 	@GetMapping("/loadAddProduct")
 	public String loadAddProduct(Model m) {
-		List<Category> categories = categoryService.getAllCategory();
+		List<Category> categories = categoryClient.getAllCategory();
 		m.addAttribute("categories", categories);
 		return "admin/add_product";
 	}
@@ -94,8 +93,8 @@ public class AdminController {
 	@GetMapping("/category")
 	public String category(Model m, @RequestParam(name = "pageNo", defaultValue = "0") Integer pageNo,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize) {
-		// m.addAttribute("categorys", categoryService.getAllCategory());
-		Page<Category> page = categoryService.getAllCategorPagination(pageNo, pageSize);
+		// m.addAttribute("categorys", categoryClient.getAllCategory());
+		Page<Category> page = categoryClient.getAllCategorPagination(pageNo, pageSize);
 		List<Category> categorys = page.getContent();
 		m.addAttribute("categorys", categorys);
 
@@ -123,13 +122,13 @@ public class AdminController {
 		
 		category.setImageName(imageName);
 
-		Boolean existCategory = categoryService.existCategory(category.getName());
+		Boolean existCategory = categoryClient.existCategory(category.getName());
 
 		if (existCategory) {
 			session.setAttribute("errorMsg", "Category Name already exists");
 		} else {
 
-			Category saveCategory = categoryService.saveCategory(category);
+			Category saveCategory = categoryClient.saveCategory(category);
 
 			if (ObjectUtils.isEmpty(saveCategory)) {
 				session.setAttribute("errorMsg", "Not saved ! internal server error");
@@ -152,7 +151,7 @@ public class AdminController {
 
 	@GetMapping("/deleteCategory/{id}")
 	public String deleteCategory(@PathVariable int id, HttpSession session) {
-		Boolean deleteCategory = categoryService.deleteCategory(id);
+		Boolean deleteCategory = categoryClient.deleteCategory(id);
 
 		if (deleteCategory) {
 			session.setAttribute("succMsg", "category delete success");
@@ -165,7 +164,7 @@ public class AdminController {
 
 	@GetMapping("/loadEditCategory/{id}")
 	public String loadEditCategory(@PathVariable int id, Model m) {
-		m.addAttribute("category", categoryService.getCategoryById(id));
+		m.addAttribute("category", categoryClient.getCategoryById(id));
 		return "admin/edit_category";
 	}
 
@@ -173,7 +172,7 @@ public class AdminController {
 	public String updateCategory(@ModelAttribute Category category, @RequestParam("file") MultipartFile file,
 			HttpSession session) throws IOException {
 
-		Category oldCategory = categoryService.getCategoryById(category.getId());
+		Category oldCategory = categoryClient.getCategoryById(category.getId());
 		String imageName = file.isEmpty() ? oldCategory.getImageName() : file.getOriginalFilename();
 
 		if (!ObjectUtils.isEmpty(category)) {
@@ -183,7 +182,7 @@ public class AdminController {
 			oldCategory.setImageName(imageName);
 		}
 
-		Category updateCategory = categoryService.saveCategory(oldCategory);
+		Category updateCategory = categoryClient.saveCategory(oldCategory);
 
 		if (!ObjectUtils.isEmpty(updateCategory)) {
 
@@ -279,7 +278,7 @@ public class AdminController {
 	@GetMapping("/editProduct/{id}")
 	public String editProduct(@PathVariable int id, Model m) {
 		m.addAttribute("product", productClient.getProductById(id));
-		m.addAttribute("categories", categoryService.getAllCategory());
+		m.addAttribute("categories", categoryClient.getAllCategory());
 		return "admin/edit_product";
 	}
 
@@ -327,11 +326,11 @@ public class AdminController {
 	@GetMapping("/orders")
 	public String getAllOrders(Model m, @RequestParam(name = "pageNo", defaultValue = "0") Integer pageNo,
 			@RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize) {
-//		List<ProductOrder> allOrders = orderService.getAllOrders();
+//		List<ProductOrder> allOrders = orderClient.getAllOrders();
 //		m.addAttribute("orders", allOrders);
 //		m.addAttribute("srch", false);
 
-		Page<ProductOrder> page = orderService.getAllOrdersPagination(pageNo, pageSize);
+		Page<ProductOrder> page = orderClient.getAllOrdersPagination(pageNo, pageSize);
 		m.addAttribute("orders", page.getContent());
 		m.addAttribute("srch", false);
 
@@ -357,7 +356,7 @@ public class AdminController {
 			}
 		}
 
-		ProductOrder updateOrder = orderService.updateOrderStatus(id, status);
+		ProductOrder updateOrder = orderClient.updateOrderStatus(id, status);
 
 		try {
 			commonUtil.sendMailForProductOrder(updateOrder, status);
@@ -380,7 +379,7 @@ public class AdminController {
 
 		if (orderId != null && orderId.length() > 0) {
 
-			ProductOrder order = orderService.getOrdersByOrderId(orderId.trim());
+			ProductOrder order = orderClient.getOrdersByOrderId(orderId.trim());
 
 			if (ObjectUtils.isEmpty(order)) {
 				session.setAttribute("errorMsg", "Incorrect orderId");
@@ -391,11 +390,11 @@ public class AdminController {
 
 			m.addAttribute("srch", true);
 		} else {
-//			List<ProductOrder> allOrders = orderService.getAllOrders();
+//			List<ProductOrder> allOrders = orderClient.getAllOrders();
 //			m.addAttribute("orders", allOrders);
 //			m.addAttribute("srch", false);
 
-			Page<ProductOrder> page = orderService.getAllOrdersPagination(pageNo, pageSize);
+			Page<ProductOrder> page = orderClient.getAllOrdersPagination(pageNo, pageSize);
 			m.addAttribute("orders", page);
 			m.addAttribute("srch", false);
 

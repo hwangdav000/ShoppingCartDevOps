@@ -8,14 +8,20 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.Principal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collector;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,24 +34,30 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecom.client.CartClient;
+import com.ecom.client.CategoryClient;
 import com.ecom.client.ProductClient;
 import com.ecom.client.UserClient;
 import com.ecom.model.Category;
 import com.ecom.model.Product;
 import com.ecom.model.UserDtls;
-import com.ecom.service.CategoryService;
+import com.ecom.service.SessionService;
 import com.ecom.util.CommonUtil;
 
 import io.micrometer.common.util.StringUtils;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
 public class HomeController {
+	
+	@Autowired
+	private SessionService sessionService;
 
 	@Autowired
-	private CategoryService categoryService;
+	private CategoryClient categoryClient;
 
 	@Autowired
 	private ProductClient productClient;
@@ -72,7 +84,7 @@ public class HomeController {
 			m.addAttribute("countCart", countCart);
 		}
 
-		List<Category> allActiveCategory = categoryService.getAllActiveCategory();
+		List<Category> allActiveCategory = categoryClient.getAllActiveCategory();
 		m.addAttribute("categorys", allActiveCategory);
 	}
 	
@@ -81,7 +93,7 @@ public class HomeController {
 	@GetMapping("/home")
 	public String index(Model m) {
 
-		List<Category> allActiveCategory = categoryService.getAllActiveCategory().stream()
+		List<Category> allActiveCategory = categoryClient.getAllActiveCategory().stream()
 				.sorted((c1, c2) -> c2.getId().compareTo(c1.getId())).limit(6).toList();
 		List<Product> allActiveProducts = productClient.getAllActiveProducts("").stream()
 				.sorted((p1, p2) -> p2.getId().compareTo(p1.getId())).limit(8).toList();
@@ -91,9 +103,59 @@ public class HomeController {
 	}
 
 	@GetMapping("/signin")
-	public String login() {
-		return "login";
+	public String login(HttpServletRequest request, HttpServletResponse response) {
+	    String sessionId = getSessionIdFromCookies(request.getCookies());
+
+	    // Check for logout request
+	    if (request.getParameter("logout") != null) {
+	        if (sessionId != null) {
+	            // Invalidate the session
+	            sessionService.invalidateSession(sessionId);
+
+	            // Clear the session cookie
+	            Cookie sessionCookie = new Cookie("sessionId", null);
+	            sessionCookie.setPath("/");
+	            sessionCookie.setMaxAge(0); // Immediately expire the cookie
+	            response.addCookie(sessionCookie);
+	        }
+
+	        // Redirect to login page with a logout message (optional)
+	        return "login"; // Alternatively, you can return a model attribute to show a logout message
+	    }
+
+	    System.out.println("---------------sessionID-----------" + sessionId);
+
+	    // If session id is valid then skip login
+	    if (sessionId != null && sessionService.isValidSession(sessionId)) {
+	        // If session is valid, redirect based on user role
+	        Integer userId = sessionService.getUserIdBySession(sessionId);
+	        UserDtls user = userClient.getUserById(userId);
+	        String role = user.getRole();
+
+	        if (role.equals("ROLE_ADMIN")) {
+	            System.out.println("ADMIN PAGE");
+	            return "redirect:admin/"; // Redirect to admin page
+	        } else {
+	            System.out.println("USER PAGE");
+	            return "redirect:home"; // Redirect to home page
+	        }
+	    }
+
+	    return "login"; // Show the login page if session is invalid
 	}
+
+	// Helper method to retrieve session ID from cookies
+	private String getSessionIdFromCookies(Cookie[] cookies) {
+	    if (cookies != null) {
+	        for (Cookie cookie : cookies) {
+	            if ("sessionId".equals(cookie.getName())) {
+	                return cookie.getValue();
+	            }
+	        }
+	    }
+	    return null; // No sessionId found
+	}
+
 
 	@GetMapping("/register")
 	public String register() {
@@ -106,7 +168,7 @@ public class HomeController {
 			@RequestParam(name = "pageSize", defaultValue = "12") Integer pageSize,
 			@RequestParam(defaultValue = "") String ch) {
 
-		List<Category> categories = categoryService.getAllActiveCategory();
+		List<Category> categories = categoryClient.getAllActiveCategory();
 		m.addAttribute("paramValue", category);
 		m.addAttribute("categories", categories);
 
@@ -246,7 +308,7 @@ public class HomeController {
 	public String searchProduct(@RequestParam String ch, Model m) {
 		List<Product> searchProducts = productClient.searchProduct(ch);
 		m.addAttribute("products", searchProducts);
-		List<Category> categories = categoryService.getAllActiveCategory();
+		List<Category> categories = categoryClient.getAllActiveCategory();
 		m.addAttribute("categories", categories);
 		return "product";
 

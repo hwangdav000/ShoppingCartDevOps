@@ -47,9 +47,9 @@ public class SecurityConfig {
 				.authorizeHttpRequests(req->req.requestMatchers("/user/**").hasRole("USER")
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				.requestMatchers("/**").permitAll())
-				.formLogin(form->form.loginPage("/signin")
+				.formLogin(form->form
+						.loginPage("/signin")
 						.loginProcessingUrl("/login")
-//						.defaultSuccessUrl("/home")
 						.failureHandler(authenticationFailureHandler)
 						.successHandler(authenticationSuccessHandler))
 				.logout(logout->logout.permitAll());

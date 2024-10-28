@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecom.client.CartClient;
+import com.ecom.client.CategoryClient;
+import com.ecom.client.OrderClient;
 import com.ecom.client.UserClient;
 import com.ecom.model.Cart;
 import com.ecom.model.Category;
@@ -23,8 +25,6 @@ import com.ecom.model.OrderRequest;
 import com.ecom.model.ProductOrder;
 import com.ecom.model.UserDtls;
 
-import com.ecom.service.CategoryService;
-import com.ecom.service.OrderService;
 import com.ecom.util.CommonUtil;
 import com.ecom.util.OrderStatus;
 
@@ -38,13 +38,13 @@ public class UserController {
 	private UserClient userClient;
 	
 	@Autowired
-	private CategoryService categoryService;
+	private CategoryClient categoryClient;
 
 	@Autowired
 	private CartClient cartClient;
 
 	@Autowired
-	private OrderService orderService;
+	private OrderClient orderClient;
 
 	@Autowired
 	private CommonUtil commonUtil;
@@ -68,7 +68,7 @@ public class UserController {
 			m.addAttribute("countCart", countCart);
 		}
 
-		List<Category> allActiveCategory = categoryService.getAllActiveCategory();
+		List<Category> allActiveCategory = categoryClient.getAllActiveCategory();
 		m.addAttribute("categorys", allActiveCategory);
 	}
 
@@ -127,7 +127,7 @@ public class UserController {
 	public String saveOrder(@ModelAttribute OrderRequest request, Principal p) throws Exception {
 		// System.out.println(request);
 		UserDtls user = getLoggedInUserDetails(p);
-		orderService.saveOrder(user.getId(), request);
+		orderClient.saveOrder(user.getId(), request);
 
 		return "redirect:/user/success";
 	}
@@ -140,7 +140,7 @@ public class UserController {
 	@GetMapping("/user-orders")
 	public String myOrder(Model m, Principal p) {
 		UserDtls loginUser = getLoggedInUserDetails(p);
-		List<ProductOrder> orders = orderService.getOrdersByUser(loginUser.getId());
+		List<ProductOrder> orders = orderClient.getOrdersByUser(loginUser.getId());
 		m.addAttribute("orders", orders);
 		return "/user/my_orders";
 	}
@@ -157,7 +157,7 @@ public class UserController {
 			}
 		}
 
-		ProductOrder updateOrder = orderService.updateOrderStatus(id, status);
+		ProductOrder updateOrder = orderClient.updateOrderStatus(id, status);
 		
 		try {
 			commonUtil.sendMailForProductOrder(updateOrder, status);
